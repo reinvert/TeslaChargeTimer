@@ -103,16 +103,22 @@
             padding-right: 10px;
         }
 
-        .time-input-container input {
+        /* [수정] 입력창이 단위 글자를 밀어내지 않도록 유연하게 너비 조절 */
+        .time-input-container input[type="number"] {
+            flex: 1;
+            min-width: 0;
+            width: auto;
             border: none;
             background: transparent;
             text-align: right;
             padding-right: 5px;
         }
 
+        /* [수정] "시간", "분" 단익 칸이 절대 2줄로 쪼개지지 않도록 설정 */
         .time-input-container span {
             color: var(--text-secondary);
             font-size: 0.9rem;
+            white-space: nowrap; 
         }
 
         #result {
@@ -142,47 +148,7 @@
             font-size: 0.85rem;
             color: var(--text-secondary);
             line-height: 1.5;
-            margin-bottom: 15px;
         }
-
-        /* 버튼 컨테이너 및 공통 디자인 */
-        .btn-container {
-            display: none; /* 기본 숨김 */
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .action-btn {
-            width: 100%;
-            border: none;
-            padding: 12px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-
-        .action-btn:active {
-            transform: scale(0.98);
-        }
-
-        /* 안드로이드 타이머 버튼 (오렌지 계열) */
-        .btn-android {
-            background-color: #ff9500;
-            color: white;
-            box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3);
-        }
-        .btn-android:hover { background-color: #e08400; }
-
-        /* 아이폰/공용 캘린더 버튼 (그린 계열) */
-        .btn-ios {
-            background-color: #34c759;
-            color: white;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
-        }
-        .btn-ios:hover { background-color: #2eb14e; }
     </style>
 </head>
 <body>
@@ -226,19 +192,10 @@
         <div class="result-title" id="resultTitle">5A ➔ 32A 추천 전환 시각</div>
         <div class="result-time" id="resultTime">--:--</div>
         <div class="result-notice" id="resultNotice">정보를 입력하시면 계산이 시작됩니다.</div>
-        
-        <!-- 원터치 알림 등록 버튼 그룹 -->
-        <div class="btn-container" id="btnContainer">
-            <button class="action-btn btn-android" onclick="startAndroidTimer()">⏳ 갤럭시/안드로이드 타이머 시작</button>
-            <button class="action-btn btn-ios" onclick="addAlarmToCalendar()">📅 아이폰/공용 캘린더 알림 등록</button>
-        </div>
     </div>
 </div>
 
 <script>
-    let calculatedSwitchDate = null;
-    let remainingSecondsForTimer = 0; // 타이머 설정을 위한 초 단위 저장 변수
-
     function openTimePicker() {
         const timeInput = document.getElementById('targetTime');
         if (typeof timeInput.showPicker === 'function') {
@@ -257,18 +214,15 @@
         const resultTitle = document.getElementById('resultTitle');
         const resultTime = document.getElementById('resultTime');
         const resultNotice = document.getElementById('resultNotice');
-        const btnContainer = document.getElementById('btnContainer');
 
         // 상태 초기화
         resultTitle.textContent = "5A ➔ 32A 추천 전환 시각";
         resultTime.style.color = "var(--text-secondary)";
-        btnContainer.style.display = "none";
-        calculatedSwitchDate = null;
-        remainingSecondsForTimer = 0;
 
+        // [수정] 경고 문구에서 괄호 조건문 삭제
         if (!targetTimeVal || (remHours === 0 && remMinutes === 0)) {
             resultTime.textContent = "--:--";
-            resultNotice.innerHTML = "남은 시간을 입력해 주세요. (목표 시각은 18:00으로 기본 설정되어 있습니다)";
+            resultNotice.innerHTML = "남은 시간을 입력해 주세요.";
             return;
         }
 
@@ -300,13 +254,8 @@
             return;
         }
 
-        // 정상 계산 완료
         const switchDate = new Date(now.getTime() + (X * 60 * 60 * 1000));
-        calculatedSwitchDate = switchDate;
         
-        // 타이머용 '남은 초' 계산 (정수형태)
-        remainingSecondsForTimer = Math.max(1, Math.round((switchDate - now) / 1000));
-
         const formatTime = (date) => {
             return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
         };
@@ -319,59 +268,6 @@
         resultNotice.innerHTML = `
             현재 시각(${formatTime(now)}) 기준, 앞으로 <strong>${waitHours}시간 ${waitMinutes}분 동안 5A로 유지</strong>하다가 위 시간에 32A로 올리시면 됩니다.
         `;
-        
-        // 정상 계산 완료 시 버튼 컨테이너 노출 (안드로이드 타이머 + 아이폰 캘린더)
-        btnContainer.style.display = "flex";
-    }
-
-    // [안드로이드 전용] 순정 시계 앱의 타이머 기능 호출
-    function startAndroidTimer() {
-        if (remainingSecondsForTimer <= 0) return;
-
-        const label = encodeURIComponent("⚡ 테슬라 충전 전류 변경 (32A)");
-        // 안드로이드 시스템 Intent 주소 생성 (초 단위 입력, 라벨 포함, UI 스킵 안 함)
-        const intentUrl = `intent:#Intent;action=android.intent.action.SET_TIMER;i.android.intent.extra.alarm.LENGTH=${remainingSecondsForTimer};s.android.intent.extra.alarm.MESSAGE=${label};end`;
-        
-        window.location.href = intentUrl;
-    }
-
-    // [아이폰/공용] 캘린더 등록 함수
-    function addAlarmToCalendar() {
-        if (!calculatedSwitchDate) return;
-
-        const formatICSDate = (date) => {
-            const pad = (num) => String(num).padStart(2, '0');
-            return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}00`;
-        };
-
-        const start = formatICSDate(calculatedSwitchDate);
-        const endDate = new Date(calculatedSwitchDate.getTime() + 10 * 60 * 1000);
-        const end = formatICSDate(endDate);
-
-        const icsContent = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//Tesla Charging Switcher//KR',
-            'BEGIN:VEVENT',
-            `DTSTART:${start}`,
-            `DTEND:${end}`,
-            'SUMMARY:⚡ 테슬라 충전 전류 변경 (5A ➔ 32A)',
-            'DESCRIPTION:테슬라 충전 전류를 32A로 변경하여 속도를 높일 시간입니다.',
-            'BEGIN:VALARM',
-            'TRIGGER:PT0M',
-            'ACTION:DISPLAY',
-            'DESCRIPTION:Tesla Reminder',
-            'END:VALARM',
-            'END:VEVENT',
-            'END:VCALENDAR'
-        ].join('\r\n');
-
-        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'tesla_switch_reminder.ics';
-        link.click();
-        URL.revokeObjectURL(link.href);
     }
 
     calculateSwitchTime();
